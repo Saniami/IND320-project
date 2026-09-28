@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/reservoirs.csv")
+    df = pd.read_csv(Path(__file__).parent.parent / "data" / "reservoirs.csv")
     df["dato_Id"] = pd.to_datetime(df["dato_Id"])
 
     df = df.rename(columns={
