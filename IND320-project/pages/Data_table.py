@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 
 # This function loads and cleans up the data.
 # @st.cache_data means Streamlit remembers the result, so the file isn't re-read every time something changes in the app (makes it faster).
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/reservoirs.csv")
+    # Go up from pages/ to the project folder, then into data/
+    df = pd.read_csv(Path(__file__).parent.parent / "data" / "reservoirs.csv")
 
     # Turn the date column into a real date type, so we can sort and filter by it
     df["dato_Id"] = pd.to_datetime(df["dato_Id"])

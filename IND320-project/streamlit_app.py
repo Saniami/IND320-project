@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 
 st.set_page_config(page_title="IND320 - Reservoir Data", layout="wide")
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/reservoirs.csv")
+    # Build the path to the CSV relative to this file, so it works locally and on Streamlit Cloud
+    df = pd.read_csv(Path(__file__).parent / "data" / "reservoirs.csv")
     df["dato_Id"] = pd.to_datetime(df["dato_Id"])
 
     df = df.rename(columns={
