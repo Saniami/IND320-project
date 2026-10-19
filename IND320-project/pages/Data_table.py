@@ -1,74 +1,83 @@
 import streamlit as st
 import pandas as pd
-from pathlib import Path
+import requests
 
-# This function loads and cleans up the data.
-# @st.cache_data means Streamlit remembers the result, so the file isn't re-read every time something changes in the app (makes it faster).
-@st.cache_data
-def load_data():
-    # Go up from pages/ to the project folder, then into data/
-    df = pd.read_csv(Path(__file__).parent.parent / "data" / "reservoirs.csv")
+st.set_page_config(layout="wide")
 
-    # Turn the date column into a real date type, so we can sort and filter by it
-    df["dato_Id"] = pd.to_datetime(df["dato_Id"])
+BASE = "https://biapi.nve.no/magasinstatistikk/api/Magasinstatistikk"
+HEAD = {"Accept": "application/json"}
 
-    # Give the columns clear English names instead of the original Norwegian ones
-    df = df.rename(columns={
-        "dato_Id": "Date",
-        "omrType": "Area_Type",
-        "omrnr": "Area_Number",
-        "iso_aar": "ISO_Year",
-        "iso_uke": "ISO_Week",
-        "fyllingsgrad": "Fill_Percentage",
-        "kapasitet_TWh": "Capacity_TWh",
-        "fylling_TWh": "Fill_TWh",
-        "neste_Publiseringsdato": "Next_Publication_Date",
-        "fyllingsgrad_forrige_uke": "Fill_Percentage_Previous_Week",
-        "endring_fyllingsgrad": "Fill_Percentage_Change",
+# Cached so the API is only called once per hour, not on every click
+@st.cache_data(ttl=3600)
+def fetch_all():
+    # Download all reservoir statistics from the NVE API (it has no date parameters)
+    r = requests.get(f"{BASE}/HentOffentligData", headers=HEAD, timeout=120)
+    r.raise_for_status()
+    df = pd.DataFrame(r.json())
+    df = df.rename(columns={"dato_Id": "Date", "omrType": "Area_Type", "omrnr": "Area_Number",
+        "fyllingsgrad": "Fill_Percentage", "kapasitet_TWh": "Capacity_TWh",
+        "endring_fyllingsgrad": "Fill_Percentage_Change"})
+    df["Date"] = pd.to_datetime(df["Date"])
+    return df.sort_values(["Area_Type", "Area_Number", "Date"]).reset_index(drop=True)
+
+# Area names (e.g. "NO 1" = south-east Norway), so the table says which region a row is
+@st.cache_data(ttl=86400)
+def fetch_areas():
+    r = requests.get(f"{BASE}/HentOmråder", headers=HEAD, timeout=60)
+    r.raise_for_status()
+    data = r.json()
+    rows = []
+    for block in (data if isinstance(data, list) else [data]):
+        for group in block.values():          # land, elspot, vassdrag
+            rows += group
+    return pd.DataFrame(rows)
+
+df = fetch_all()
+lookup = {(a.omrType, a.omrnr): a for a in fetch_areas().itertuples()}
+
+st.title("Reservoir data table")
+st.write(
+    "Each row is one area. The fill level is measured weekly by NVE. "
+    "The two small charts show the first month of the data series (1995) and the latest "
+    "12 weeks, both on the same 0-100 % scale so the rows can be compared."
+)
+
+# Radio buttons choose the type of area
+area_type = st.radio("Area type", ["EL", "NO", "VASS"], horizontal=True)
+st.caption({"EL": "EL: the five electricity price areas (NO 1 - NO 5).",
+            "NO": "NO: the whole of Norway.",
+            "VASS": "VASS: watercourse areas. The data only has areas 1-3."}[area_type])
+sub = df[df["Area_Type"] == area_type]
+
+# One row per area number
+rows = []
+for nr, g in sub.groupby("Area_Number"):
+    g = g.sort_values("Date")
+    first_month = g[g["Date"].dt.to_period("M") == g["Date"].min().to_period("M")]
+    info = lookup.get((area_type, int(nr)))
+    rows.append({
+        "Area": info.navn if info else str(nr),
+        "Region": info.beskrivelse.split(".")[0] if info else "",
+        "First month (%)": (first_month["Fill_Percentage"] * 100).tolist(),
+        "Last 12 weeks (%)": (g["Fill_Percentage"].tail(12) * 100).tolist(),
+        "Latest fill (%)": g["Fill_Percentage"].iloc[-1] * 100,
+        "Change last week (pp)": g["Fill_Percentage_Change"].iloc[-1] * 100,
+        "Capacity (TWh)": g["Capacity_TWh"].iloc[-1],
+        "Latest week": str(g["Date"].max().date()),
     })
 
-    # The dataset mixes several reservoir areas together in one file.
-    # We only keep one area so that the data is consistent and we don't get misleading jumps between unrelated time series.
-    df = df[df["Area_Number"] == df["Area_Number"].iloc[0]]
-
-    # Put the rows in date order, since the original file is not sorted
-    df = df.sort_values("Date").reset_index(drop=True)
-
-    return df
-
-# Load the cleaned data
-df = load_data()
-
-st.title("Reservoir Data Table")
-
-# Find the very first date in the dataset
-first_month_date = df["Date"].min()
-
-# Keep only the rows from that same month and year (i.e. the first month of data)
-first_month_data = df[
-    (df["Date"].dt.year == first_month_date.year) &
-    (df["Date"].dt.month == first_month_date.month)
-]
-
-# Get a list of only the numeric columns (the ones we can show as a trend line)
-numeric_cols = df.select_dtypes(include="number").columns
-
-# Build a small table: one row per column, with its first-month values stored as a list
-table_rows = []
-for col in numeric_cols:
-    table_rows.append({
-        "Column": col,
-        "First month trend": first_month_data[col].tolist()
-    })
-
-# Turn that list of rows into a proper table (DataFrame)
-summary_df = pd.DataFrame(table_rows)
-
-# Display the table, showing "First month trend" as a small line chart in each row
 st.dataframe(
-    summary_df,
+    pd.DataFrame(rows),
     column_config={
-        "First month trend": st.column_config.LineChartColumn("First month trend")
+        "First month (%)": st.column_config.LineChartColumn("First month (%)", y_min=0, y_max=100),
+        "Last 12 weeks (%)": st.column_config.LineChartColumn("Last 12 weeks (%)", y_min=0, y_max=100),
+        "Latest fill (%)": st.column_config.ProgressColumn(
+            "Latest fill (%)", min_value=0, max_value=100, format="%.0f"),
+        "Change last week (pp)": st.column_config.NumberColumn(format="%+.1f"),
+        "Capacity (TWh)": st.column_config.NumberColumn(format="%.1f"),
     },
     hide_index=True,
+    width="stretch",
 )
+
+st.caption("pp = percentage points. Source: NVE Magasinstatistikk API.")

@@ -1,66 +1,42 @@
 import streamlit as st
 import pandas as pd
-from pathlib import Path
+import requests
 
-st.set_page_config(page_title="IND320 - Reservoir Data", layout="wide")
+st.set_page_config(page_title="IND320 - Energy data", layout="wide")
 
-@st.cache_data
-def load_data():
-    # Build the path to the CSV relative to this file, so it works locally and on Streamlit Cloud
-    df = pd.read_csv(Path(__file__).parent / "data" / "reservoirs.csv")
-    df["dato_Id"] = pd.to_datetime(df["dato_Id"])
+BASE = "https://biapi.nve.no/magasinstatistikk/api/Magasinstatistikk"
 
-    df = df.rename(columns={
-        "dato_Id": "Date",
-        "omrType": "Area_Type",
-        "omrnr": "Area_Number",
-        "iso_aar": "ISO_Year",
-        "iso_uke": "ISO_Week",
-        "fyllingsgrad": "Fill_Percentage",
-        "kapasitet_TWh": "Capacity_TWh",
-        "fylling_TWh": "Fill_TWh",
-        "neste_Publiseringsdato": "Next_Publication_Date",
-        "fyllingsgrad_forrige_uke": "Fill_Percentage_Previous_Week",
-        "endring_fyllingsgrad": "Fill_Percentage_Change",
-    })
+# Cached so the API is only called once per hour, not on every click in the app
+@st.cache_data(ttl=3600)
+def fetch_all():
+    # Download all reservoir statistics from the NVE API (it has no date parameters)
+    r = requests.get(f"{BASE}/HentOffentligData", headers={"Accept": "application/json"}, timeout=120)
+    r.raise_for_status()
+    df = pd.DataFrame(r.json())
+    # Give the columns English names
+    df = df.rename(columns={"dato_Id": "Date", "omrType": "Area_Type", "omrnr": "Area_Number",
+        "fyllingsgrad": "Fill_Percentage", "kapasitet_TWh": "Capacity_TWh", "fylling_TWh": "Fill_TWh"})
+    df["Date"] = pd.to_datetime(df["Date"])
+    return df.sort_values(["Area_Type", "Area_Number", "Date"]).reset_index(drop=True)
 
-    # Filter to a single area (Area 4) for a clean, consistent time series
-    df = df[df["Area_Number"] == df["Area_Number"].iloc[0]]
-    df = df.sort_values("Date").reset_index(drop=True)
+df = fetch_all()
 
-    return df
+st.title("IND320 - Energy data")
+st.write("""
+This app uses two data sources:
+- **NVE Magasinstatistikk API**: weekly reservoir fill levels, by area type (EL, NO, VASS).
+- **ENTSO-E cross-border flows**: collected with Spark, stored in Cassandra and curated into MongoDB.
 
-df = load_data()
+Use the sidebar to open the pages.
+""")
 
-st.title("IND320 - Reservoir Data App")
-
-st.write(
-    """
-    This app explores Norwegian reservoir (vannmagasin) data, showing fill levels 
-    and capacity over time. The data is read weekly and includes fill percentage, 
-    capacity, and week-over-week change.
-    
-    **Note:** The dataset contains multiple reservoir areas mixed together. 
-    To keep the data consistent and avoid misleading jumps between unrelated 
-    time series, this app only shows measurements for **Area 4**.
-    
-    Use the sidebar to navigate between the pages:
-    - **Data Table** — an overview table of the dataset, with a mini trend chart 
-      for each column showing the first month of data.
-    - **Plot** — an interactive plot where you can choose a column and a date range 
-      to explore how it changes over time.
-    - **Page 4** — placeholder page for future project parts.
-    """
-)
-
-st.subheader("Latest Measurement (Only for Area 4)")
-
-# Get the most recent row in the dataset
-latest = df.iloc[-1]
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Fill Percentage", f"{latest['Fill_Percentage']:.1%}")
-col2.metric("Fill Volume", f"{latest['Fill_TWh']:.2f} TWh")
-col3.metric("Capacity", f"{latest['Capacity_TWh']:.2f} TWh")
-
-st.caption(f"Latest data point: {latest['Date'].date()} (Area {latest['Area_Number']})")
+# Latest measurement for the whole of Norway (area type NO)
+st.subheader("Latest measurement, whole Norway")
+no = df[df["Area_Type"] == "NO"]
+if not no.empty:
+    latest = no.iloc[-1]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Fill percentage", f"{latest['Fill_Percentage']:.1%}")
+    c2.metric("Fill volume", f"{latest['Fill_TWh']:.1f} TWh")
+    c3.metric("Capacity", f"{latest['Capacity_TWh']:.1f} TWh")
+    st.caption(f"Latest data point: {latest['Date'].date()}")
