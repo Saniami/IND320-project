@@ -5,5 +5,5 @@ jupyter
 requests
 pymongo
 scipy
-sckit-learn
+scikit-learn
 statsmodels
