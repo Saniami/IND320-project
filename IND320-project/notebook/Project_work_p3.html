@@ -7894,7 +7894,7 @@ some of the text in the notebook and the log, which I then changed to fit what i
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">DATA_DIR</span> <span class="o">=</span> <span class="s2">"../data"</span>
 
-<span class="c1"># The shapefiles are in different map projections, Both use EPSG:25833 (metres).</span>
+<span class="c1"># Read the two shapefiles. Both use EPSG:25833 (metres), so they can be used together.</span>
 <span class="c1"># utf-8 is needed because of the Norwegian letter in the names.</span>
 <span class="n">bud</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATA_DIR</span><span class="si">}</span><span class="s2">/Budområder/Budområder.shp"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
 <span class="n">reg</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATA_DIR</span><span class="si">}</span><span class="s2">/NVE region/NVE_Region.shp"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
@@ -8099,7 +8099,8 @@ and the result is cached to disk.</p>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">ARCHIVE_URL</span> <span class="o">=</span> <span class="s2">"https://archive-api.open-meteo.com/v1/archive"</span>
-<span class="n">HOURLY</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"temperature_2m"</span><span class="p">,</span> <span class="s2">"precipitation"</span><span class="p">,</span> <span class="s2">"rain"</span><span class="p">,</span> <span class="s2">"snowfall"</span><span class="p">,</span><span class="s2">"wind_speed_10m"</span><span class="p">,</span> <span class="s2">"wind_gusts_10m"</span><span class="p">,</span> <span class="s2">"wind_direction_10m"</span><span class="p">]</span> <span class="c1"># also added rain and snowfall </span>
+<span class="n">HOURLY</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"temperature_2m"</span><span class="p">,</span> <span class="s2">"precipitation"</span><span class="p">,</span> <span class="s2">"rain"</span><span class="p">,</span> <span class="s2">"snowfall"</span><span class="p">,</span><span class="s2">"wind_speed_10m"</span><span class="p">,</span> <span class="s2">"wind_gusts_10m"</span><span class="p">,</span> <span class="s2">"wind_direction_10m"</span><span class="p">]</span>
+<span class="c1"># also added rain and snowfall </span>
 <span class="n">CACHE</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"../data/weather_cache"</span><span class="p">);</span> <span class="n">CACHE</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">download_weather</span><span class="p">(</span><span class="n">area_type</span><span class="p">,</span> <span class="n">area_number</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">batch</span><span class="o">=</span><span class="mi">50</span><span class="p">):</span>
@@ -8580,7 +8581,7 @@ other, it is marked as an anomaly.</p>
 This way each hour is compared with the hours around it, and not with the whole year. A temperature of
 -10 °C is normal in January, but it would be very strange in July, and LOF can see this difference.</p>
 <p>The function has one main parameter, <code>contamination</code>, which is the share of points that are marked as
-anomalies.</p>
+anomalies. The default is 1 %.</p>
 </div>
 </div>
 </div>
