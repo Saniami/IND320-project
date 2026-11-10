@@ -19,8 +19,7 @@ TYPE_TEXT = {"EL": "EL: the five electricity price areas (NO 1 - NO 5).",
 
 def area_selector(show_number=True):
     """Area selector at the top of the page. The choice is saved in st.session_state, so it stays the same when you go to another page.
-    Use show_number=False on pages that show all areas of one type, then only the type is shown.
-    Returns the chosen area type and number, for example ("EL", 3)."""
+    Use show_number=False on pages that show all areas of one type, then only the type is shown."""
     ss = st.session_state
     ss.setdefault("area_type", "EL")                # default the first time the app opens
     ss.setdefault("area_number", 3)
@@ -79,7 +78,7 @@ def load_locations():
 
 @st.cache_data(show_spinner=False, persist="disk")                    # hidden download: runs once per area and year
 def download_weather(area_type, area_number, start, end, batch=20, max_cells=20):
-    """Same as in the notebook: snap the points to the ERA5 grid, download each cell once, weighted mean."""
+    """Same as in the notebook: use the points to the ERA5 grid, download each cell once, with weighted mean."""
     loc = load_locations()
     loc = loc[(loc.Area_Type == area_type) & (loc.Area_Number == area_number)]
     cells = (loc.assign(lat=(loc.lat * 4).round() / 4, lon=(loc.lon * 4).round() / 4)
@@ -110,8 +109,7 @@ def download_weather(area_type, area_number, start, end, batch=20, max_cells=20)
     return out
 
 def get_weather(year):
-    """Weather for the area chosen in the global selector. The user never starts the download by hand:
-    it happens in the background, with a spinner the first time and a short confirmation."""
+    """Weather for the area chosen in the global selector. The user never starts the download self"""
     area_type, area_number = st.session_state["area_type"], st.session_state["area_number"]
     with st.spinner(f"Downloading weather data for {area_label()} {year} ..."):
         try:
