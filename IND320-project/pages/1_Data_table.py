@@ -36,6 +36,11 @@ def fetch_areas():
 df = fetch_all()
 lookup = {(a.omrType, a.omrnr): a for a in fetch_areas().itertuples()}
 
+#NVE gives the region names in Norwegian, so they are translated to English to match the rest of the app (like the feedback said).
+REGION_EN = {"Hele landet": "Whole country", "Sørøst-Norge": "Southeastern Norway",
+             "Sørvest-Norge": "Southwestern Norway", "Midt-Norge": "Central Norway",
+             "Nord-Norge": "Northern Norway", "Vest-Norge": "Western Norway"}
+
 st.title("Reservoir data table")
 st.write(
     "Each row is one area. The fill level is measured weekly by NVE. "
@@ -45,7 +50,6 @@ st.write(
 
 # Radio buttons choose the type of area
 area_type, area_number = area_selector(show_number=False)   #Area type, shared with the other pages (only the type, since this page shows all areas of one type)
-  area_type, area_number = area_selector(show_number=False)
 sub = df[df["Area_Type"] == area_type]
 
 # One row per area number
@@ -54,9 +58,10 @@ for nr, g in sub.groupby("Area_Number"):
     g = g.sort_values("Date")
     first_month = g[g["Date"].dt.to_period("M") == g["Date"].min().to_period("M")]
     info = lookup.get((area_type, int(nr)))
+    region_no = info.beskrivelse.split(".")[0] if info else ""
     rows.append({
         "Area": info.navn if info else str(nr),
-        "Region": info.beskrivelse.split(".")[0] if info else "",
+        "Region": REGION_EN.get(region_no, region_no),
         "First month (%)": (first_month["Fill_Percentage"] * 100).tolist(),
         "Last 12 weeks (%)": (g["Fill_Percentage"].tail(12) * 100).tolist(),
         "Latest fill (%)": g["Fill_Percentage"].iloc[-1] * 100,
