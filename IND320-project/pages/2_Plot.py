@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import requests
 import matplotlib.pyplot as plt
+from utils import area_selector
 
 BASE = "https://biapi.nve.no/magasinstatistikk/api/Magasinstatistikk"
 
@@ -35,7 +36,7 @@ all_df = fetch_all()
 months = sorted(all_df["Month"].unique())
 
 # Radio buttons: type of area
-area_type = st.radio("Area type", ["EL", "NO", "VASS"], horizontal=True)
+area_type, area_number = area_selector(show_number=False)
 
 # Dropdown: one column or all columns
 cols = ["Fill_Percentage", "Capacity_TWh", "Fill_TWh",

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+from utils import area_selector
 
 st.set_page_config(layout="wide")
 
@@ -43,10 +44,8 @@ st.write(
 )
 
 # Radio buttons choose the type of area
-area_type = st.radio("Area type", ["EL", "NO", "VASS"], horizontal=True)
-st.caption({"EL": "EL: the five electricity price areas (NO 1 - NO 5).",
-            "NO": "NO: the whole of Norway.",
-            "VASS": "VASS: watercourse areas. The data only has areas 1-3."}[area_type])
+area_type, area_number = area_selector(show_number=False)   #Area type, shared with the other pages (only the type, since this page shows all areas of one type)
+  area_type, area_number = area_selector(show_number=False)
 sub = df[df["Area_Type"] == area_type]
 
 # One row per area number
