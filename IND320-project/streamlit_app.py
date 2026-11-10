@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import requests
-import sys
 
 st.set_page_config(page_title="IND320 - Energy data", layout="wide")
 
