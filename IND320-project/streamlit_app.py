@@ -1,42 +1,32 @@
+"""Main file of the app. It only sets up the page config and the menu.
+The pages are grouped by type of task (see the sketch in the part 4 notebook):
+Home (map) -> Explore, Anomalies and Forecast. Each group has its own colour (utils.GROUP_COLORS)."""
 import streamlit as st
-import pandas as pd
-import requests
+from utils import init_state, show_selection_in_sidebar
 
-st.set_page_config(page_title="IND320 - Energy data", layout="wide")
 
-BASE = "https://biapi.nve.no/magasinstatistikk/api/Magasinstatistikk"
+st.set_page_config(page_title="IND320 - Energy and weather", page_icon=":material/water_drop:", layout="wide")
+init_state()                                  # default area, week and weather property for all pages
 
-# Cached so the API is only called once per hour, not on every click in the app
-@st.cache_data(ttl=3600)
-def fetch_all():
-    # Download all reservoir statistics from the NVE API (it has no date parameters)
-    r = requests.get(f"{BASE}/HentOffentligData", headers={"Accept": "application/json"}, timeout=120)
-    r.raise_for_status()
-    df = pd.DataFrame(r.json())
-    # Give the columns English names
-    df = df.rename(columns={"dato_Id": "Date", "omrType": "Area_Type", "omrnr": "Area_Number",
-        "fyllingsgrad": "Fill_Percentage", "kapasitet_TWh": "Capacity_TWh", "fylling_TWh": "Fill_TWh"})
-    df["Date"] = pd.to_datetime(df["Date"])
-    return df.sort_values(["Area_Type", "Area_Number", "Date"]).reset_index(drop=True)
+pages = {
+    "Home": [
+        st.Page("pages/home.py", title="Map and selection", icon=":material/map:", default=True),
+    ],
+    "Explore": [
+        st.Page("pages/explore_data_overview.py", title="Reservoir data overview", icon=":material/table_chart:"),
+        st.Page("pages/explore_cross_border.py", title="Cross-border flows", icon=":material/swap_horiz:"),
+        st.Page("pages/explore_currency.py", title="Currency", icon=":material/euro:"),
+        st.Page("pages/explore_correlation.py", title="Weather vs. reservoir", icon=":material/stacked_line_chart:"),
+    ],
+    "Anomalies": [
+        st.Page("pages/anomalies_stl.py", title="STL and spectrogram", icon=":material/waves:"),
+        st.Page("pages/anomalies_weather_outliers.py", title="Weather outliers", icon=":material/thunderstorm:"),
+    ],
+    "Forecast": [
+        st.Page("pages/forecast_reservoir.py", title="Reservoir forecast", icon=":material/trending_up:"),
+    ],
+}
 
-df = fetch_all()
-
-st.title("IND320 - Energy data")
-st.write("""
-This app uses two data sources:
-- **NVE Magasinstatistikk API**: weekly reservoir fill levels, by area type (EL, NO, VASS).
-- **ENTSO-E cross-border flows**: collected with Spark, stored in Cassandra and curated into MongoDB.
-
-Use the sidebar to open the pages.
-""")
-
-# Latest measurement for the whole of Norway (area type NO)
-st.subheader("Latest measurement, whole Norway")
-no = df[df["Area_Type"] == "NO"]
-if not no.empty:
-    latest = no.iloc[-1]
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Fill percentage", f"{latest['Fill_Percentage']:.1%}")
-    c2.metric("Fill volume", f"{latest['Fill_TWh']:.1f} TWh")
-    c3.metric("Capacity", f"{latest['Capacity_TWh']:.1f} TWh")
-    st.caption(f"Latest data point: {latest['Date'].date()}")
+pg = st.navigation(pages)
+show_selection_in_sidebar()
+pg.run()
