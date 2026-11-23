@@ -1,0 +1,13 @@
+# App theme: calm "water" colours that fit reservoirs and weather.
+# The same colours are used in the Plotly template in utils.py, so the plots match the app.
+
+[theme]
+base = "light"
+primaryColor = "#1f6f8b"               # buttons, sliders, selected items
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#eef4f7"   # sidebar and input fields
+textColor = "#1d2b36"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"

@@ -1,0 +1,15 @@
+{
+  "sources": [
+    "weather",
+    "currency"
+  ],
+  "history_weeks": 260,
+  "horizon": 12,
+  "model": "snarimax",
+  "p": 2,
+  "d": 1,
+  "q": 1,
+  "sp": 0,
+  "sd": 0,
+  "sq": 0
+}
